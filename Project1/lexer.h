@@ -59,10 +59,9 @@ class Token
 {
 public:
   void Print();
-
+  int line_no;
   std::string lexeme;
   TokenType token_type;
-  int line_no;
 };
 
 // lexical analyzer class
@@ -71,16 +70,18 @@ class LexicalAnalyzer
 public:
   Token GetToken();
   TokenType UngetToken(Token);
+
   LexicalAnalyzer();
 
 private:
   std::vector<Token> tokens;
-  int line_no;
-  Token tmp;
-  InputBuffer input;
 
+  int line_no;
   bool SkipSpace();
   bool IsKeyword(std::string);
+
+  Token tmp;
+  InputBuffer input;
   TokenType FindKeywordIndex(std::string);
   Token ScanIdOrKeyword();
   Token ScanNumber();
