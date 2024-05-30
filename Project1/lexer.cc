@@ -3,11 +3,10 @@
 // ASU ID: 1224807311
 // Date: 5/29/2024
 //
-/*
- * Copyright (C) Rida Bazzi, 2016
- *
- * Do not share this file with anyone
- */
+
+// Gyllian Gaylor 1214978271
+
+// lexer.cc file
 
 #include <iostream>
 #include <istream>
@@ -27,7 +26,8 @@ string reserved[] = {
     "EQUAL", "COLON", "COMMA", "SEMICOLON",
     "LBRAC", "RBRAC", "LPAREN", "RPAREN",
     "NOTEQUAL", "GREATER", "LESS", "LTEQ", "GTEQ",
-    "DOT", "NUM", "ID", "ERROR" // TODO: Add labels for new token types here (as string)
+    "DOT", "NUM", "ID", "ERROR", "REALNUM", "BASE08NUM",
+    "BASE16NUM" // TODO: Add labels for new token types here (as string)
 };
 
 #define KEYWORDS_COUNT 5
@@ -94,31 +94,220 @@ TokenType LexicalAnalyzer::FindKeywordIndex(string s)
     return ERROR;
 }
 
+// ----- start changed code ----
+
+// checks for the specified characters
+bool isSpecifiedChar(char newVar)
+{
+    return newVar == 'A' ||
+           newVar == 'B' ||
+           newVar == 'C' ||
+           newVar == 'D' ||
+           newVar == 'E' ||
+           newVar == 'F';
+}
+
 Token LexicalAnalyzer::ScanNumber()
 {
     char c;
 
+    // newly added scanning variables
+    char scanVariable, scanVariable2, scanVariable3;
+    int flag0 = 0, flag8 = 0;
+    char arr[100];
     input.GetChar(c);
     if (isdigit(c))
     {
-        if (c == '0')
+        if (c != '0')
         {
-            tmp.lexeme = "0";
-        }
-        else
-        {
-            tmp.lexeme = "";
+            tmp.lexeme = ""; // else operation
             while (!input.EndOfInput() && isdigit(c))
             {
                 tmp.lexeme += c;
                 input.GetChar(c);
+                if (c == '8' || c == '9')
+                {
+                    flag8 = 1;
+                }
             }
             if (!input.EndOfInput())
             {
                 input.UngetChar(c);
             }
         }
+        else
+        {
+            tmp.lexeme = "0";
+            flag0 = 1;
+        }
         // TODO: You can check for REALNUM, BASE08NUM and BASE16NUM here!
+        input.GetChar(scanVariable);
+        if (scanVariable == '.')
+        {
+            int flagnotzero = 0;
+            string newstring = "";
+            input.GetChar(scanVariable2);
+            if (isdigit(scanVariable2))
+            {
+                while (!input.EndOfInput() && isdigit(scanVariable2))
+                {
+                    if (scanVariable2 != '0')
+                    {
+                        flagnotzero = 1;
+                    }
+                    newstring += scanVariable2;
+                    input.GetChar(scanVariable2);
+                }
+                if (!input.EndOfInput())
+                {
+                    input.UngetChar(scanVariable2);
+                }
+            }
+            else
+            {
+                input.UngetChar(scanVariable2);
+            }
+            // flags respectively 0 and 1
+            if (flagnotzero == 0 && flag0 == 1)
+            {
+                // ungets newstring after use
+                input.UngetString(newstring);
+            }
+            else
+            {
+                input.UngetString(newstring);
+                input.GetChar(scanVariable2);
+                if (isdigit(scanVariable2))
+                {
+                    tmp.lexeme += '.';
+                    while (!input.EndOfInput() && (isdigit(scanVariable2)))
+                    {
+                        tmp.lexeme += scanVariable2;
+                        input.GetChar(scanVariable2);
+                    }
+                    if (!input.EndOfInput())
+                    {
+                        input.UngetChar(scanVariable2);
+                    }
+                    // similar functions are executed as before for token relations
+                    tmp.token_type = REALNUM;
+                    tmp.line_no = line_no;
+                    return tmp;
+                }
+                else
+                {
+                    input.UngetChar(scanVariable2);
+                }
+            }
+            input.UngetChar(scanVariable);
+            // x must be x in order to pass the tests
+        }
+        else if (scanVariable == 'x') /// where is a initiallized
+        {
+            input.GetChar(scanVariable2);
+            if (scanVariable2 == '0')
+            {
+                input.GetChar(scanVariable3);
+                if (scanVariable3 == '8' && flag8 == 0)
+                {
+                    tmp.lexeme = tmp.lexeme + scanVariable + scanVariable2 + scanVariable3;
+                    // the following token commands are executed and the tmp returns
+                    tmp.token_type = BASE08NUM;
+                    tmp.line_no = line_no;
+                    return tmp;
+                }
+                else
+                {
+                    input.UngetChar(scanVariable3);
+                }
+                input.UngetChar(scanVariable2);
+            }
+            // if newvari is equal to 1 instead of zero and newvaria is equal to six instead of
+            else if (scanVariable2 == '1')
+            {
+                input.GetChar(scanVariable3);
+                if (scanVariable3 == '6')
+                {
+                    tmp.lexeme = tmp.lexeme + scanVariable + scanVariable2 + scanVariable3;
+                    tmp.token_type = BASE16NUM;
+                    tmp.line_no = line_no;
+                    return tmp;
+                }
+                else
+                {
+                    input.UngetChar(scanVariable3);
+                }
+                input.UngetChar(scanVariable2);
+            }
+            else
+            {
+                input.UngetChar(scanVariable2);
+            }
+            input.UngetChar(scanVariable);
+        }
+        // checking letters that are currently associated with IFS for newVar1
+        else if (isSpecifiedChar(scanVariable))
+        // this checks for strings that are visible
+        {
+            int counter = 0;
+            int newcount = 0;
+            char arr[100];
+            // creates and array with elements equal to the current count of 0 (empty)
+
+            arr[counter] = scanVariable;
+            while (isdigit(arr[counter]) || isSpecifiedChar(arr[counter]))
+            {
+                counter++;
+                input.GetChar(arr[counter]);
+            }
+            newcount = counter;
+            scanVariable = arr[counter];
+            if (scanVariable == 'x')
+            {
+                input.GetChar(scanVariable2);
+                if (scanVariable2 == '1')
+                {
+                    input.GetChar(scanVariable3);
+                    if (scanVariable3 == '6')
+                    {
+                        for (counter = 0; counter < newcount; counter++)
+                        {
+                            tmp.lexeme = tmp.lexeme + arr[counter];
+                        }
+                        tmp.lexeme = tmp.lexeme + scanVariable + scanVariable2 + scanVariable3;
+                        tmp.token_type = BASE16NUM;
+                        tmp.line_no = line_no;
+                        return tmp;
+                    }
+                    else
+                    {
+                        input.UngetChar(scanVariable3);
+                        input.UngetChar(scanVariable2);
+                    }
+                }
+                else
+                {
+                    input.UngetChar(scanVariable2);
+                }
+
+                input.UngetChar(scanVariable);
+            }
+            else
+            {
+                input.UngetChar(scanVariable);
+            }
+            counter--;
+            while (counter > -1)
+            {
+                input.UngetChar(arr[counter]);
+                counter--;
+            }
+        }
+        else
+        {
+            input.UngetChar(scanVariable);
+        }
+
         tmp.token_type = NUM;
         tmp.line_no = line_no;
         return tmp;
@@ -129,12 +318,15 @@ Token LexicalAnalyzer::ScanNumber()
         {
             input.UngetChar(c);
         }
+
         tmp.lexeme = "";
         tmp.token_type = ERROR;
         tmp.line_no = line_no;
+
         return tmp;
     }
 }
+// ----- end changed code ----
 
 Token LexicalAnalyzer::ScanIdOrKeyword()
 {
@@ -143,7 +335,9 @@ Token LexicalAnalyzer::ScanIdOrKeyword()
 
     if (isalpha(c))
     {
+
         tmp.lexeme = "";
+
         while (!input.EndOfInput() && isalnum(c))
         {
             tmp.lexeme += c;
@@ -171,22 +365,6 @@ Token LexicalAnalyzer::ScanIdOrKeyword()
     return tmp;
 }
 
-// you should unget tokens in the reverse order in which they
-// are obtained. If you execute
-//
-//    t1 = lexer.GetToken();
-//    t2 = lexer.GetToken();
-//    t3 = lexer.GetToken();
-//
-// in this order, you should execute
-//
-//    lexer.UngetToken(t3);
-//    lexer.UngetToken(t2);
-//    lexer.UngetToken(t1);
-//
-// if you want to unget all three tokens. Note that it does not
-// make sense to unget t1 without first ungetting t2 and t3
-//
 TokenType LexicalAnalyzer::UngetToken(Token tok)
 {
     tokens.push_back(tok);
@@ -201,6 +379,7 @@ Token LexicalAnalyzer::GetToken()
     // if there are tokens that were previously
     // stored due to UngetToken(), pop a token and
     // return it without reading from input
+
     if (!tokens.empty())
     {
         tmp = tokens.back();
@@ -212,6 +391,7 @@ Token LexicalAnalyzer::GetToken()
     tmp.lexeme = "";
     tmp.line_no = line_no;
     input.GetChar(c);
+
     switch (c)
     {
     case '.':

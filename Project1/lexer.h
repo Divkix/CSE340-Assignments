@@ -49,9 +49,10 @@ typedef enum
   NUM,
   ID,
   ERROR,
+  // added new labels for new token types below
   REALNUM,
   BASE08NUM,
-  BASE16NUM // AddDED labels for new token types here
+  BASE16NUM
 } TokenType;
 
 // token class
