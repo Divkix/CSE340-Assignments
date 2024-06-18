@@ -1,5 +1,0 @@
-age
-
-hello {
-  age = ten;
-}
