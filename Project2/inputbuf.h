@@ -8,15 +8,16 @@
 
 #include <string>
 
-class InputBuffer {
-  public:
-    void GetChar(char&);
-    char UngetChar(char);
-    std::string UngetString(std::string);
-    bool EndOfInput();
+class InputBuffer
+{
+public:
+  void GetChar(char &);
+  char UngetChar(char);
+  std::string UngetString(std::string);
+  bool EndOfInput();
 
-  private:
-    std::vector<char> input_buffer;
+private:
+  std::vector<char> input_buffer;
 };
 
-#endif  //__INPUT_BUFFER__H__
+#endif //__INPUT_BUFFER__H__
