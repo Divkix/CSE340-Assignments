@@ -1,3 +1,10 @@
+//
+// Name: Divanshu Chauhan
+//
+// Date: 06/19/2024
+//
+// Description: This file contains the implementation of a lexical analyzer for a simple programming language.
+//
 /*
  * Copyright (C) Rida Bazzi, 2016
  *

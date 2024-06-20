@@ -1,38 +1,47 @@
+//
+// Name: Divanshu Chauhan
+//
+// Date: 06/19/2024
+//
+// Description: This file contains the implementation of a lexical analyzer for a simple programming language.
+//
 /*
  * Copyright (C) Rida Bazzi, 2016
  *
  * Do not share this file with anyone
  */
+// import necessary libraries
 #include <iostream>
 #include <istream>
 #include <vector>
 #include <string>
 #include <cctype>
 
-#include "lexer.h"
-#include "inputbuf.h"
+// import files
+#include "lexer.h"    // Header file for the lexical analyzer class
+#include "inputbuf.h" // Header file for the input buffer class
 
 using namespace std;
 
-string reserved[] = { "END_OF_FILE",
-    "IF", "WHILE", "DO", "THEN", "PRINT",
-    "PLUS", "MINUS", "DIV", "MULT",
-    "EQUAL", "COLON", "COMMA", "SEMICOLON",
-    "LBRAC", "RBRAC", "LPAREN", "RPAREN",
-    "NOTEQUAL", "GREATER", "LESS", "LTEQ", "GTEQ",
-    "DOT", "NUM", "ID", "ERROR" // TODO: Add labels for new token types here (as string)
-};
+// Array of strings representing reserved tokens in the language
+string reserved[] = {
+    "END_OF_FILE",
+    "PUBLIC", "PRIVATE", "EQUAL",
+    "COLON", "COMMA", "SEMICOLON",
+    "LBRACE", "RBRACE", "ID", "ERROR"};
 
-#define KEYWORDS_COUNT 5
-string keyword[] = { "IF", "WHILE", "DO", "THEN", "PRINT" };
+#define KEYWORDS_COUNT 2                  // Number of keywords in the language
+string keyword[] = {"public", "private"}; // Array of keyword strings
 
+// Print function for a token, displaying its lexeme, type, and line number
 void Token::Print()
 {
     cout << "{" << this->lexeme << " , "
-         << reserved[(int) this->token_type] << " , "
+         << reserved[(int)this->token_type] << " , "
          << this->line_no << "}\n";
 }
 
+// Constructor for the LexicalAnalyzer class, initializes line number and temporary token
 LexicalAnalyzer::LexicalAnalyzer()
 {
     this->line_no = 1;
@@ -41,237 +50,160 @@ LexicalAnalyzer::LexicalAnalyzer()
     tmp.token_type = ERROR;
 }
 
+// Function to skip over comments in the input
+Token LexicalAnalyzer::SkipComment()
+{
+    // Skip characters until a newline or end of input is found
+    char c;
+    input.GetChar(c);
+
+    for (; !input.EndOfInput() && c != '\n'; input.GetChar(c))
+    {
+    }
+
+    // Increment line number for the skipped line
+    line_no = line_no + 1;
+
+    // If not at the end of input, put the last character back
+    if (!input.EndOfInput())
+        input.UngetChar(c);
+
+    // Proceed to get the next token after the comment
+    return GetToken();
+}
+
+// Function to skip whitespace characters in the input
 bool LexicalAnalyzer::SkipSpace()
 {
     char c;
-    bool space_encountered = false;
+    bool whitespaceFound = false;
 
     input.GetChar(c);
-    line_no += (c == '\n');
+    if (c == '\n')
+        line_no++;
 
-    while (!input.EndOfInput() && isspace(c)) {
-        space_encountered = true;
-        input.GetChar(c);
-        line_no += (c == '\n');
+    for (; !input.EndOfInput() && isspace(c); input.GetChar(c))
+    {
+        whitespaceFound = true;
+        if (c == '\n')
+            line_no++; // Increment line number for newlines
     }
 
-    if (!input.EndOfInput()) {
+    if (!input.EndOfInput())
         input.UngetChar(c);
-    }
-    return space_encountered;
+    return whitespaceFound;
 }
 
+// Function to check if a string is a keyword
 bool LexicalAnalyzer::IsKeyword(string s)
 {
-    for (int i = 0; i < KEYWORDS_COUNT; i++) {
-        if (s == keyword[i]) {
+    int i = 0;
+    while (i < KEYWORDS_COUNT)
+    {
+        if (s == keyword[i])
             return true;
-        }
+        i++;
     }
     return false;
 }
 
+// Function to find the index of a keyword, used to determine its token type
 TokenType LexicalAnalyzer::FindKeywordIndex(string s)
 {
-    for (int i = 0; i < KEYWORDS_COUNT; i++) {
-        if (s == keyword[i]) {
-            return (TokenType) (i + 1);
-        }
+    int i = 0;
+    while (i < KEYWORDS_COUNT)
+    {
+        if (s == keyword[i])
+            return (TokenType)(i + 1); // Return the token type, offset by 1 to account for the END_OF_FILE token
+        i++;
     }
-    return ERROR;
+    return ERROR; // Return ERROR token type if not found
 }
 
-Token LexicalAnalyzer::ScanNumber()
-{
-    char c;
-
-    input.GetChar(c);
-    if (isdigit(c)) {
-        if (c == '0') {
-            tmp.lexeme = "0";
-        } else {
-            tmp.lexeme = "";
-            while (!input.EndOfInput() && isdigit(c)) {
-                tmp.lexeme += c;
-                input.GetChar(c);
-            }
-            if (!input.EndOfInput()) {
-                input.UngetChar(c);
-            }
-        }
-        // TODO: You can check for REALNUM, BASE08NUM and BASE16NUM here!
-        tmp.token_type = NUM;
-        tmp.line_no = line_no;
-        return tmp;
-    } else {
-        if (!input.EndOfInput()) {
-            input.UngetChar(c);
-        }
-        tmp.lexeme = "";
-        tmp.token_type = ERROR;
-        tmp.line_no = line_no;
-        return tmp;
-    }
-}
-
+// Function to scan identifiers or keywords in the input
 Token LexicalAnalyzer::ScanIdOrKeyword()
 {
     char c;
     input.GetChar(c);
-
-    if (isalpha(c)) {
-        tmp.lexeme = "";
-        while (!input.EndOfInput() && isalnum(c)) {
-            tmp.lexeme += c;
-            input.GetChar(c);
-        }
-        if (!input.EndOfInput()) {
+    if (!isalpha(c))
+    {
+        if (!input.EndOfInput())
             input.UngetChar(c);
-        }
+        tmp.token_type = ERROR;
+    }
+    else
+    {
+        tmp.lexeme = "";
+        for (; !input.EndOfInput() && isalnum(c); input.GetChar(c))
+            tmp.lexeme += c;
+        if (!input.EndOfInput())
+            input.UngetChar(c);
         tmp.line_no = line_no;
         if (IsKeyword(tmp.lexeme))
-            tmp.token_type = FindKeywordIndex(tmp.lexeme);
+            tmp.token_type = FindKeywordIndex(tmp.lexeme); // Set token type if it's a keyword
         else
-            tmp.token_type = ID;
-    } else {
-        if (!input.EndOfInput()) {
-            input.UngetChar(c);
-        }
-        tmp.lexeme = "";
-        tmp.token_type = ERROR;
+            tmp.token_type = ID; // Set token type to ID for identifiers
     }
     return tmp;
 }
 
-// you should unget tokens in the reverse order in which they
-// are obtained. If you execute
-//
-//    t1 = lexer.GetToken();
-//    t2 = lexer.GetToken();
-//    t3 = lexer.GetToken();
-//
-// in this order, you should execute
-//
-//    lexer.UngetToken(t3);
-//    lexer.UngetToken(t2);
-//    lexer.UngetToken(t1);
-//
-// if you want to unget all three tokens. Note that it does not
-// make sense to unget t1 without first ungetting t2 and t3
-//
+// Function to unget (put back) a token, used for lookahead
 TokenType LexicalAnalyzer::UngetToken(Token tok)
 {
-    tokens.push_back(tok);;
+    tokens.push_back(tok);
     return tok.token_type;
 }
 
+// Main function to get the next token from the input
 Token LexicalAnalyzer::GetToken()
 {
     char c;
 
-    // if there are tokens that were previously
-    // stored due to UngetToken(), pop a token and
-    // return it without reading from input
-    if (!tokens.empty()) {
+    // If there are ungotten tokens, return the last one
+    if (!tokens.empty())
+    {
         tmp = tokens.back();
         tokens.pop_back();
         return tmp;
     }
 
+    // Skip any whitespace before getting the next token
     SkipSpace();
     tmp.lexeme = "";
     tmp.line_no = line_no;
     input.GetChar(c);
-    switch (c) {
-        case '.':
-            tmp.token_type = DOT;
-            return tmp;
-        case '+':
-            tmp.token_type = PLUS;
-            return tmp;
-        case '-':
-            tmp.token_type = MINUS;
-            return tmp;
-        case '/':
-            tmp.token_type = DIV;
-            return tmp;
-        case '*':
-            tmp.token_type = MULT;
-            return tmp;
-        case '=':
-            tmp.token_type = EQUAL;
-            return tmp;
-        case ':':
-            tmp.token_type = COLON;
-            return tmp;
-        case ',':
-            tmp.token_type = COMMA;
-            return tmp;
-        case ';':
-            tmp.token_type = SEMICOLON;
-            return tmp;
-        case '[':
-            tmp.token_type = LBRAC;
-            return tmp;
-        case ']':
-            tmp.token_type = RBRAC;
-            return tmp;
-        case '(':
-            tmp.token_type = LPAREN;
-            return tmp;
-        case ')':
-            tmp.token_type = RPAREN;
-            return tmp;
-        case '<':
-            input.GetChar(c);
-            if (c == '=') {
-                tmp.token_type = LTEQ;
-            } else if (c == '>') {
-                tmp.token_type = NOTEQUAL;
-            } else {
-                if (!input.EndOfInput()) {
-                    input.UngetChar(c);
-                }
-                tmp.token_type = LESS;
-            }
-            return tmp;
-        case '>':
-            input.GetChar(c);
-            if (c == '=') {
-                tmp.token_type = GTEQ;
-            } else {
-                if (!input.EndOfInput()) {
-                    input.UngetChar(c);
-                }
-                tmp.token_type = GREATER;
-            }
-            return tmp;
-        default:
-            if (isdigit(c)) {
-                input.UngetChar(c);
-                return ScanNumber();
-            } else if (isalpha(c)) {
-                input.UngetChar(c);
-                return ScanIdOrKeyword();
-            } else if (input.EndOfInput())
-                tmp.token_type = END_OF_FILE;
-            else
-                tmp.token_type = ERROR;
 
-            return tmp;
-    }
-}
-
-int main()
-{
-    LexicalAnalyzer lexer;
-    Token token;
-
-    token = lexer.GetToken();
-    token.Print();
-    while (token.token_type != END_OF_FILE)
+    // Check the first character to determine the token type
+    if (c == '/')
     {
-        token = lexer.GetToken();
-        token.Print();
+        char next_char;
+        input.GetChar(next_char);
+        if (next_char == '/') // If it's a comment, skip it
+            return SkipComment();
+        input.UngetChar(next_char);
+        tmp.token_type = ERROR;
     }
+    else if (c == '=')
+        tmp.token_type = EQUAL;
+    else if (c == ':')
+        tmp.token_type = COLON;
+    else if (c == ',')
+        tmp.token_type = COMMA;
+    else if (c == ';')
+        tmp.token_type = SEMICOLON;
+    else if (c == '{')
+        tmp.token_type = LBRACE;
+    else if (c == '}')
+        tmp.token_type = RBRACE;
+    else if (isalpha(c)) // If it starts with a letter, it could be an ID or keyword
+    {
+        input.UngetChar(c);
+        return ScanIdOrKeyword();
+    }
+    else if (input.EndOfInput())
+        tmp.token_type = END_OF_FILE; // End of file token
+    else
+        tmp.token_type = ERROR; // Error token for unrecognized characters
+
+    return tmp;
 }
