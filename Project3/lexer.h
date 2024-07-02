@@ -1,9 +1,9 @@
 /*
  * Copyright (C) Rida Bazzi, 2016
- * Edited by Joshua Elkins, 2023
  *
  * Do not share this file with anyone
  */
+
 #ifndef __LEXER__H__
 #define __LEXER__H__
 
@@ -12,75 +12,85 @@
 
 #include "inputbuf.h"
 
-// ------- token types -------------------
-
 typedef enum
 {
-  END_OF_FILE = 0,
-  INT,
-  REAL,
-  BOO,
-  TR,
-  FA,
-  IF,
-  WHILE,
-  SWITCH,
-  CASE,
-  PUBLIC,
-  PRIVATE,
-  NUM,
-  REALNUM,
-  NOT,
-  PLUS,
-  MINUS,
-  MULT,
-  DIV,
-  GTEQ,
-  GREATER,
-  LTEQ,
-  NOTEQUAL,
-  LESS,
-  LPAREN,
-  RPAREN,
-  EQUAL,
-  COLON,
-  COMMA,
-  SEMICOLON,
-  LBRACE,
-  RBRACE,
-  ID,
-  ERROR
+    END_OF_FILE,
+    INT,
+    REAL,
+    BOO,
+    TR,
+    FA,
+    IF,
+    WHILE,
+    SWITCH,
+    CASE,
+    PUBLIC,
+    PRIVATE,
+    NUM,
+    REALNUM,
+    NOT,
+    PLUS,
+    MINUS,
+    MULT,
+    DIV,
+    GTEQ,
+    GREATER,
+    LTEQ,
+    NOTEQUAL,
+    LESS,
+    LPAREN,
+    RPAREN,
+    EQUAL,
+    COLON,
+    COMMA,
+    SEMICOLON,
+    LBRACE,
+    RBRACE,
+    ID,
+    ERROR
 } TokenType;
+
+// std::string keyword[] = {"int", "real", "bool", "true", "false", "if", "while", "switch", "case", "public", "private"};
 
 class Token
 {
 public:
-  void Print();
+    void Print();
 
-  std::string lexeme;
-  TokenType token_type;
-  int line_no;
+    std::string lexeme;
+    TokenType token_type;
+    int line_no;
 };
+
+void typeUpdating(int LHS, int RHS);
+void addList(std::string n, int lN, int t);
+int searchList(std::string n);
 
 class LexicalAnalyzer
 {
 public:
-  Token GetToken();
-  TokenType UngetToken(Token);
-  LexicalAnalyzer();
+    Token GetToken();
+    TokenType UngetToken(Token);
+    LexicalAnalyzer();
+
+    bool IsOctalDigit(char c);
+    bool IsHexDigit(char c);
+    void ConsumeRealNumber();
+    void ConsumeBase16Number();
+    void ConsumeBase08Number();
 
 private:
-  std::vector<Token> tokens;
-  int line_no;
-  Token tmp;
-  InputBuffer input;
+    std::vector<Token> tokens;
+    int line_no;
+    Token tmp;
+    InputBuffer input;
 
-  bool SkipSpace();
-  bool SkipComments();
-  bool IsKeyword(std::string);
-  TokenType FindKeywordIndex(std::string);
-  Token ScanIdOrKeyword();
-  Token ScanNumber();
+    bool SkipSpace();
+    bool SkipComments();
+    bool IsKeyword(std::string);
+    TokenType FindKeywordIndex(std::string);
+    Token ScanIdOrKeyword();
+    Token ScanNumber();
 };
 
 #endif //__LEXER__H__
