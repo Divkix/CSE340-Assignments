@@ -101,6 +101,7 @@ bool LexicalAnalyzer::SkipComments()
     }
 }
 
+// todo: extra function other than previous code
 bool LexicalAnalyzer::IsKeyword(string s)
 {
     for (int i = 0; i < KEYWORDS_COUNT; i++)
