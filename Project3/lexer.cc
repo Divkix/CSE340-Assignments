@@ -1,3 +1,8 @@
+/*
+ * Copyright (C) Rida Bazzi, 2016
+ *
+ * Do not share this file with anyone
+ */
 #include <iostream>
 #include <istream>
 #include <vector>
@@ -21,15 +26,15 @@ string keyword[] = {"int", "real", "bool", "true", "false", "if", "while", "swit
 LexicalAnalyzer lexer;
 Token token;
 TokenType tempTokenType;
-int enumType;
-int enumCount = 4;
+
+int numEnum = 4;
 
 struct sTableEntry
 {
     string name;
-    int lineNo;
+    int lineNO;
     int type;
-    int printed;
+    int isPrinted;
 };
 
 struct sTable
@@ -52,9 +57,9 @@ void addList(std::string name, int line, int type)
         sTableEntry *newItem = new sTableEntry();
 
         newItem->name = name;
-        newItem->lineNo = token.line_no;
+        newItem->lineNO = token.line_no;
         newItem->type = type;
-        newItem->printed = 0;
+        newItem->isPrinted = 0;
 
         newEntry->item = newItem;
         newEntry->next = NULL;
@@ -74,9 +79,9 @@ void addList(std::string name, int line, int type)
         sTableEntry *newItem = new sTableEntry();
 
         newItem->name = name;
-        newItem->lineNo = token.line_no;
+        newItem->lineNO = token.line_no;
         newItem->type = type;
-        newItem->printed = 0;
+        newItem->isPrinted = 0;
 
         newEntry->item = newItem;
         newEntry->next = NULL;
@@ -85,14 +90,15 @@ void addList(std::string name, int line, int type)
     }
 }
 
-int Search_List(std::string n)
+int searchList(std::string n)
 {
     sTable *temp = symbolTable;
+
     bool found = false;
     if (symbolTable == NULL)
     {
-        addList(n, token.line_no, enumCount);
-        enumCount++;
+        addList(n, token.line_no, numEnum);
+        numEnum++;
         return (4);
     }
     else
@@ -116,9 +122,9 @@ int Search_List(std::string n)
         }
         if (!found)
         {
-            addList(n, token.line_no, enumCount);
-            enumCount++;
-            int t = enumCount - 1;
+            addList(n, token.line_no, numEnum);
+            numEnum++;
+            int t = numEnum - 1;
             return (t);
         }
         else
@@ -367,7 +373,6 @@ Token LexicalAnalyzer::ScanIdOrKeyword()
 TokenType LexicalAnalyzer::UngetToken(Token tok)
 {
     tokens.push_back(tok);
-    ;
     return tok.token_type;
 }
 
@@ -484,6 +489,7 @@ int parse_varlist(void)
 {
     token = lexer.GetToken();
     int tempI;
+
     char *lexeme = (char *)malloc(sizeof(token.lexeme) + 1);
     memcpy(lexeme, (token.lexeme).c_str(), (token.lexeme).size() + 1);
     addList(lexeme, token.line_no, 0);
@@ -518,13 +524,24 @@ int parse_unaryOperator(void)
 {
     token = lexer.GetToken();
 
-    if (token.token_type == NOT)
+    if (token.token_type == NOT || token.token_type == PLUS || token.token_type == MINUS)
     {
-        return (1);
+        switch (token.token_type)
+        {
+        case NOT:
+            return (1);
+        case PLUS:
+            return (2);
+        case MINUS:
+            return (3);
+        default:
+            cout << "\nSyntax Error\n";
+            return (0);
+        }
     }
     else
     {
-        cout << "\n Syntax Error\n";
+        cout << "\nSyntax Error\n";
         return (0);
     }
 }
@@ -584,52 +601,32 @@ int parse_primary(void)
     token = lexer.GetToken();
     if (token.token_type == ID)
     {
-        return (Search_List(token.lexeme));
+        return (searchList(token.lexeme));
     }
     else if (token.token_type == NUM)
     {
+
         return (1);
     }
     else if (token.token_type == REALNUM)
     {
+
         return (2);
     }
     else if (token.token_type == TR)
     {
+
         return (3);
     }
     else if (token.token_type == FA)
     {
+
         return (3);
     }
     else
     {
         cout << "\n Syntax Error \n";
         return (0);
-    }
-}
-
-bool isEpr(int i)
-{
-    if (i == PLUS || i == MINUS || i == MULT || i == DIV || i == GREATER || i == LESS || i == GTEQ || i == LTEQ || i == EQUAL || i == NOTEQUAL)
-    {
-        return true;
-    }
-    else
-    {
-        return false;
-    }
-}
-
-bool isExpress(int c)
-{
-    if (c != 15 && c != 16 && c != 17 && c != 18 && c != 19 && c != 20 && c != 21 && c != 22 && c != 23 && c != 26)
-    {
-        return true;
-    }
-    else
-    {
-        return false;
     }
 }
 
@@ -642,33 +639,32 @@ int parse_expression(void)
         lexer.UngetToken(token);
         tempI = parse_primary();
     }
-    else if (isEpr(token.token_type))
+    else if (token.token_type == PLUS || token.token_type == MINUS || token.token_type == MULT || token.token_type == DIV || token.token_type == GREATER || token.token_type == LESS || token.token_type == GTEQ || token.token_type == LTEQ || token.token_type == EQUAL || token.token_type == NOTEQUAL)
     {
-        int leftExp;
-        int rightExp;
         tempTokenType = lexer.UngetToken(token);
         tempI = parse_binaryOperator();
-        leftExp = parse_expression();
-        rightExp = parse_expression();
-        if ((leftExp != rightExp) || isExpress(tempI))
+        int tempI1 = parse_expression();
+        int tempI2 = parse_expression();
+
+        if ((tempI1 != tempI2) || (tempI != 15 && tempI != 16 && tempI != 17 && tempI != 18 && tempI != 19 && tempI != 20 && tempI != 21 && tempI != 22 && tempI != 23 && tempI != 26))
         {
 
             if (tempI == 15 || tempI == 16 || tempI == 17 || tempI == 18)
             {
-                if (leftExp <= 2 && rightExp > 3)
+                if (tempI1 <= 2 && tempI2 > 3)
                 {
-                    update_Types(rightExp, leftExp);
-                    rightExp = leftExp;
+                    typeUpdating(tempI2, tempI1);
+                    tempI2 = tempI1;
                 }
-                else if (leftExp > 3 && rightExp <= 2)
+                else if (tempI1 > 3 && tempI2 <= 2)
                 {
-                    update_Types(rightExp, leftExp);
-                    leftExp = rightExp;
+                    typeUpdating(tempI2, tempI1);
+                    tempI1 = tempI2;
                 }
-                else if (leftExp > 3 && rightExp > 3)
+                else if (tempI1 > 3 && tempI2 > 3)
                 {
-                    update_Types(rightExp, leftExp);
-                    rightExp = leftExp;
+                    typeUpdating(tempI2, tempI1);
+                    tempI2 = tempI1;
                 }
                 else
                 {
@@ -678,10 +674,10 @@ int parse_expression(void)
             }
             else if (tempI == 19 || tempI == 20 || tempI == 21 || tempI == 22 || tempI == 23 || tempI == 26)
             {
-                if (rightExp > 3 && leftExp > 3)
+                if (tempI2 > 3 && tempI1 > 3)
                 {
-                    update_Types(rightExp, leftExp);
-                    rightExp = leftExp;
+                    typeUpdating(tempI2, tempI1);
+                    tempI2 = tempI1;
                     return (3);
                 }
                 else
@@ -702,9 +698,10 @@ int parse_expression(void)
         }
         else
         {
-            tempI = rightExp;
+            tempI = tempI2;
         }
     }
+
     else if (token.token_type == NOT)
     {
         tempTokenType = lexer.UngetToken(token);
@@ -724,24 +721,24 @@ int parse_expression(void)
     return tempI;
 }
 
-void compare_L(int line_No, int token_Type)
+void comparingLeft(int line_No, int token_Type)
 {
     sTable *temp = symbolTable;
     while (temp->next != NULL)
     {
-        if (temp->item->lineNo == line_No)
+        if (temp->item->lineNO == line_No)
         {
             temp->item->type = token_Type;
         }
         temp = temp->next;
     }
-    if (temp->item->lineNo == line_No)
+    if (temp->item->lineNO == line_No)
     {
         temp->item->type = token_Type;
     }
 }
 
-void update_Types(int currentType, int newType)
+void typeUpdating(int currentType, int newType)
 {
     sTable *temp = symbolTable;
 
@@ -759,61 +756,52 @@ void update_Types(int currentType, int newType)
     }
 }
 
-bool isExp(int n)
-{
-
-    if (n == ID || n == NUM || n == REALNUM || n == TR || n == FA || n == PLUS || n == MINUS || n == MULT || n == DIV || n == LESS || n == GREATER || n == GTEQ || n == LTEQ || n == EQUAL || n == NOTEQUAL || n == NOT)
-    {
-        return true;
-    }
-    else
-    {
-        return false;
-    }
-}
-
 int parse_assstmt(void)
 {
+
+    int leftHS;
+    int rightHS;
+    token = lexer.GetToken();
     int tempI;
     string name;
-    int LHS;
-    int RHS;
-    token = lexer.GetToken();
+
     if (token.token_type == ID)
     {
-        LHS = Search_List(token.lexeme);
+
+        leftHS = searchList(token.lexeme);
         token = lexer.GetToken();
         if (token.token_type == EQUAL)
         {
             token = lexer.GetToken();
-            if (isExp(token.token_type))
+            if (token.token_type == ID || token.token_type == NUM || token.token_type == REALNUM || token.token_type == TR || token.token_type == FA || token.token_type == PLUS || token.token_type == MINUS || token.token_type == MULT || token.token_type == DIV || token.token_type == LESS || token.token_type == GREATER || token.token_type == GTEQ || token.token_type == LTEQ || token.token_type == EQUAL || token.token_type == NOTEQUAL || token.token_type == NOT)
             {
                 lexer.UngetToken(token);
-                RHS = parse_expression();
-                if (LHS == 1 || LHS == 2 || LHS == 3)
+                rightHS = parse_expression();
+                if (leftHS == 1 || leftHS == 2 || leftHS == 3)
                 {
-                    if (LHS == RHS)
+                    if (leftHS == rightHS)
                     {
                     }
                     else
                     {
-                        if (LHS < 3)
+                        if (leftHS < 3)
                         {
                             cout << "TYPE MISMATCH " << token.line_no << " C1" << endl;
                             exit(1);
                         }
                         else
                         {
-                            update_Types(RHS, LHS);
-                            RHS = LHS;
+                            typeUpdating(rightHS, leftHS);
+                            rightHS = leftHS;
                         }
                     }
                 }
                 else
                 {
-                    update_Types(LHS, RHS);
-                    LHS = RHS;
+                    typeUpdating(leftHS, rightHS);
+                    leftHS = rightHS;
                 }
+
                 token = lexer.GetToken();
                 if (token.token_type == SEMICOLON)
                 {
@@ -823,6 +811,7 @@ int parse_assstmt(void)
                     cout << "\n HI Syntax Error " << token.token_type << " \n";
                 }
             }
+
             else
             {
                 cout << "\n Syntax Error \n";
@@ -958,6 +947,7 @@ int parse_whilestmt(void)
         if (token.token_type == LPAREN)
         {
             tempI = parse_expression();
+
             if (tempI != 3)
             {
                 cout << "TYPE MISMATCH " << token.line_no << " C4" << endl;
@@ -995,6 +985,7 @@ int parse_ifstmt(void)
         if (token.token_type == LPAREN)
         {
             tempI = parse_expression();
+
             if (tempI != 3)
             {
                 cout << "TYPE MISMATCH " << token.line_no << " C4" << endl;
@@ -1083,12 +1074,14 @@ int parse_body(void)
 {
     token = lexer.GetToken();
     int tempI;
+
     if (token.token_type == LBRACE)
     {
         tempI = parse_stmtlist();
         token = lexer.GetToken();
         if (token.token_type == RBRACE)
         {
+
             return (0);
         }
         else
@@ -1114,7 +1107,7 @@ int parse_typename(void)
     token = lexer.GetToken();
     if (token.token_type == INT || token.token_type == REAL || token.token_type == BOO)
     {
-        compare_L(token.line_no, token.token_type);
+        comparingLeft(token.line_no, token.token_type);
     }
     else
     {
@@ -1185,6 +1178,7 @@ int parse_globalVars(void)
     if (token.token_type == ID)
     {
         tempTokenType = lexer.UngetToken(token);
+
         tempI = parse_vardecllist();
     }
     else
@@ -1234,18 +1228,19 @@ void printList(void)
 
     while (temp->next != NULL)
     {
-        if (temp->item->type > 3 && temp->item->printed == 0)
+        if (temp->item->type > 3 && temp->item->isPrinted == 0)
         {
             temp1 = temp->item->type;
             output += temp->item->name;
-            temp->item->printed = 1;
+            temp->item->isPrinted = 1;
+            sTable *lookAhead = temp->next;
             while (temp->next != NULL)
             {
                 temp = temp->next;
                 if (temp->item->type == temp1)
                 {
                     output += ", " + temp->item->name;
-                    temp->item->printed = 1;
+                    temp->item->isPrinted = 1;
                 }
                 else
                 {
@@ -1253,18 +1248,18 @@ void printList(void)
             }
             output += ": ? #";
             cout << output << endl;
-            temp->item->printed = 1;
+            temp->item->isPrinted = 1;
             output = "";
             temp = symbolTable;
         }
-        else if (temp->item->type < 4 && temp->item->printed == 0)
+        else if (temp->item->type < 4 && temp->item->isPrinted == 0)
         {
             string lCase = keyword[(temp->item->type) - 1];
             int temp1 = temp->item->type;
             output = temp->item->name + ": " + lCase + " #";
             cout << output << endl;
             output = "";
-            temp->item->printed = 1;
+            temp->item->isPrinted = 1;
 
             while (temp->next != NULL && temp->next->item->type == temp1)
             {
@@ -1272,7 +1267,7 @@ void printList(void)
                 string lCase2 = keyword[(temp->item->type) - 1];
                 output = temp->item->name + ": " + lCase2 + " #";
                 cout << output << endl;
-                temp->item->printed = 1;
+                temp->item->isPrinted = 1;
                 output = "";
             }
         }
@@ -1281,14 +1276,14 @@ void printList(void)
             temp = temp->next;
         }
     }
-    if (temp->item->type <= 3 && temp->item->printed == 0)
+    if (temp->item->type <= 3 && temp->item->isPrinted == 0)
     {
         string lCase3 = keyword[(temp->item->type) - 1];
         output += temp->item->name + ": " + lCase3 + " #";
         cout << output << endl;
         output = "";
     }
-    else if (temp->item->type > 3 && temp->item->printed == 0)
+    else if (temp->item->type > 3 && temp->item->isPrinted == 0)
     {
         output += temp->item->name + ":" + " ? " + "#";
         cout << output << endl;
@@ -1302,7 +1297,7 @@ void printList(void)
 char null[] = "NULL";
 int main()
 {
-    int i;
-    i = parse_program();
+    int input;
+    input = parse_program();
     printList();
 }
