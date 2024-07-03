@@ -12,11 +12,11 @@
 class InputBuffer
 {
 public:
-    void GetChar(char &);
     char UngetChar(char);
-    std::string UngetString(std::string);
     char PeekChar();
     bool EndOfInput();
+    void GetChar(char &);
+    std::string UngetString(std::string);
 
 private:
     std::vector<char> input_buffer;

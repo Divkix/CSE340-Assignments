@@ -22,7 +22,9 @@ bool InputBuffer::EndOfInput()
 char InputBuffer::UngetChar(char c)
 {
     if (c != EOF)
+    {
         input_buffer.push_back(c);
+    }
     return c;
 }
 
@@ -40,23 +42,27 @@ void InputBuffer::GetChar(char &c)
 
 string InputBuffer::UngetString(string s)
 {
-    int i = 0;
-    while (i < s.size())
+    for (auto it = s.rbegin(); it != s.rend(); ++it)
     {
-        input_buffer.push_back(s[s.size() - i - 1]);
-        i++;
+        input_buffer.push_back(*it);
     }
     return s;
 }
 
 char InputBuffer::PeekChar()
 {
-    char c = input_buffer.empty() ? (cin.get(c), c) : input_buffer.back();
-
-    if (!input_buffer.empty() || c != EOF)
+    if (input_buffer.empty())
     {
-        input_buffer.push_back(c);
+        char c;
+        cin.get(c);
+        if (c != EOF)
+        {
+            input_buffer.push_back(c);
+        }
+        return c;
     }
-
-    return c;
+    else
+    {
+        return input_buffer.back();
+    }
 }

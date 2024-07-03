@@ -37,14 +37,14 @@ struct sTableEntry
     int isPrinted;
 };
 
-struct sTable
+struct Node
 {
     sTableEntry *item;
-    sTable *prev;
-    sTable *next;
+    Node *prev;
+    Node *next;
 };
 
-sTable *symbolTable;
+Node *symbolTable;
 char *lResolve;
 char *rResolve;
 int line = 0;
@@ -53,7 +53,7 @@ void addList(std::string name, int line, int type)
 {
     if (symbolTable == NULL)
     {
-        sTable *newEntry = new sTable();
+        Node *newEntry = new Node();
         sTableEntry *newItem = new sTableEntry();
 
         newItem->name = name;
@@ -69,13 +69,13 @@ void addList(std::string name, int line, int type)
     }
     else
     {
-        sTable *temp = symbolTable;
+        Node *temp = symbolTable;
         while (temp->next != NULL)
         {
             temp = temp->next;
         }
 
-        sTable *newEntry = new sTable();
+        Node *newEntry = new Node();
         sTableEntry *newItem = new sTableEntry();
 
         newItem->name = name;
@@ -92,7 +92,7 @@ void addList(std::string name, int line, int type)
 
 int searchList(std::string n)
 {
-    sTable *temp = symbolTable;
+    Node *temp = symbolTable;
 
     bool found = false;
     if (symbolTable == NULL)
@@ -723,7 +723,7 @@ int parse_expression(void)
 
 void comparingLeft(int line_No, int token_Type)
 {
-    sTable *temp = symbolTable;
+    Node *temp = symbolTable;
     while (temp->next != NULL)
     {
         if (temp->item->lineNO == line_No)
@@ -740,7 +740,7 @@ void comparingLeft(int line_No, int token_Type)
 
 void typeUpdating(int currentType, int newType)
 {
-    sTable *temp = symbolTable;
+    Node *temp = symbolTable;
 
     while (temp->next != NULL)
     {
@@ -1223,7 +1223,7 @@ string output = "";
 
 void printList(void)
 {
-    sTable *temp = symbolTable;
+    Node *temp = symbolTable;
     int temp1;
 
     while (temp->next != NULL)
@@ -1233,7 +1233,7 @@ void printList(void)
             temp1 = temp->item->type;
             output += temp->item->name;
             temp->item->isPrinted = 1;
-            sTable *lookAhead = temp->next;
+            Node *lookAhead = temp->next;
             while (temp->next != NULL)
             {
                 temp = temp->next;
