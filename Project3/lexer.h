@@ -62,7 +62,7 @@ public:
 
 void typeUpdating(int LHS, int RHS);
 void addList(std::string n, int lN, int t);
-int searchList(std::string n);
+int searchList(const std::string &n);
 
 class LexicalAnalyzer
 {
@@ -74,6 +74,7 @@ public:
 private:
     std::vector<Token> tokens;
     int line_no;
+    int line;
     Token tmp;
     InputBuffer input;
 
