@@ -1,3 +1,12 @@
+//
+// Name: Divanshu Chauhan
+//
+// Date: 07/03/2024
+//
+//
+// Description: This is project 3 for cse340 summer 24.
+//              This file contains the implementation of the InputBuffer class.
+//
 /*
  * Copyright (C) Rida Bazzi, 2016
  *

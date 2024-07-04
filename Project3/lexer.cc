@@ -1,3 +1,12 @@
+//
+// Name: Divanshu Chauhan
+//
+// Date: 07/03/2024
+//
+//
+// Description: This is project 3 for cse340 summer 24.
+//              This file contains the implementation of the lexer and all the parser functions.
+//
 /*
  * Copyright (C) Rida Bazzi, 2016
  *
@@ -8,6 +17,7 @@
 #include <vector>
 #include <string>
 #include <cctype>
+#include <functional>
 #include <stdlib.h>
 #include <string.h>
 #include <algorithm>
@@ -16,15 +26,13 @@
 #include <iterator>
 #include "lexer.h"
 #include "inputbuf.h"
-#include <utility> // For std::pair
+#include <utility>
 
-using namespace std;
-
-string reserved[] = {
+std::string reserved[] = {
     "END_OF_FILE", "INT", "REAL", "BOOL", "TR", "FA", "IF", "WHILE", "SWITCH", "CASE", "PUBLIC", "PRIVATE", "NUM", "REALNUM", "NOT", "PLUS", "MINUS", "MULT", "DIV", "GTEQ", "GREATER", "LTEQ", "NOTEQUAL", "LESS", "LPAREN", "RPAREN", "EQUAL", "COLON", "COMMA", "SEMICOLON", "LBRACE", "RBRACE", "ID", "ERROR"};
 
 #define KEYWORDS_COUNT 11
-string keyword[] = {"int", "real", "bool", "true", "false", "if", "while", "switch", "case", "public", "private"};
+std::string keyword[] = {"int", "real", "bool", "true", "false", "if", "while", "switch", "case", "public", "private"};
 
 LexicalAnalyzer lexer;
 Token token;
@@ -32,9 +40,9 @@ TokenType tempTokenType;
 
 int numEnum = 4;
 
-struct sTableEntry
+struct stru
 {
-    string name;
+    std::string name;
     int lineNO;
     int type;
     int isPrinted;
@@ -42,7 +50,7 @@ struct sTableEntry
 
 struct Node
 {
-    sTableEntry *item;
+    stru *item;
     Node *prev;
     Node *next;
 };
@@ -50,84 +58,62 @@ struct Node
 Node *symbolTable;
 char *lResolve;
 char *rResolve;
-int line = 0;
 
 void addList(std::string name, int line, int type)
 {
+    Node *newEntry = new Node();
+    stru *newItem = new stru();
+
+    newItem->name = name;
+    newItem->lineNO = token.line_no;
+    newItem->type = type;
+    newItem->isPrinted = 0;
+    newEntry->item = newItem;
+    newEntry->next = NULL;
+
     if (symbolTable == NULL)
     {
-        Node *newEntry = new Node();
-        sTableEntry *newItem = new sTableEntry();
-
-        newItem->name = name;
-        newItem->lineNO = token.line_no;
-        newItem->type = type;
-        newItem->isPrinted = 0;
-
-        newEntry->item = newItem;
-        newEntry->next = NULL;
         newEntry->prev = NULL;
-
         symbolTable = newEntry;
+        return;
     }
-    else
+
+    Node *temp = symbolTable;
+    for (; temp->next != NULL; temp = temp->next)
     {
-        Node *temp = symbolTable;
-        while (temp->next != NULL)
-        {
-            temp = temp->next;
-        }
-
-        Node *newEntry = new Node();
-        sTableEntry *newItem = new sTableEntry();
-
-        newItem->name = name;
-        newItem->lineNO = token.line_no;
-        newItem->type = type;
-        newItem->isPrinted = 0;
-
-        newEntry->item = newItem;
-        newEntry->next = NULL;
-        newEntry->prev = temp;
-        temp->next = newEntry;
     }
+    newEntry->prev = temp;
+    temp->next = newEntry;
 }
 
 int searchList(const std::string &n)
 {
     Node *temp = symbolTable;
-
     if (symbolTable == nullptr)
     {
         addList(n, token.line_no, numEnum);
         numEnum++;
-        return 4; // As in your original code, returning 4 here as default on empty table.
+        return 4;
     }
 
-    while (temp != nullptr)
+    for (; temp != nullptr; temp = temp->next)
     {
         if (temp->item->name == n)
-        {
-            return temp->item->type; // Found the node, return its type
-        }
-        temp = temp->next;
+            return temp->item->type;
     }
 
-    // If not found, add new entry
     addList(n, token.line_no, numEnum);
-    return numEnum++; // Increment numEnum and return new type
+    return numEnum++;
 }
 
 void Token::Print()
 {
-    cout << "{" << this->lexeme << " , "
-         << reserved[(int)this->token_type] << " , "
-         << this->line_no << "}\n";
+    std::cout << "{" << this->lexeme << " , " << reserved[(int)this->token_type] << " , " << this->line_no << "}\n";
 }
 
 LexicalAnalyzer::LexicalAnalyzer()
 {
-    line_no = line = tmp.line_no = 1;
+    line_no = tmp.line_no = 1;
     tmp.lexeme = "";
     tmp.token_type = ERROR;
 }
@@ -135,25 +121,22 @@ LexicalAnalyzer::LexicalAnalyzer()
 bool LexicalAnalyzer::SkipSpace()
 {
     char c;
-    bool space_encountered = false;
+    bool got_space = false;
 
     input.GetChar(c);
     line_no += (c == '\n');
-    line = line_no;
 
     while (!input.EndOfInput() && isspace(c))
     {
-        space_encountered = true;
+        got_space = true;
         input.GetChar(c);
         line_no += (c == '\n');
-        line = line_no;
     }
 
     if (!input.EndOfInput())
-    {
         input.UngetChar(c);
-    }
-    return space_encountered;
+
+    return got_space;
 }
 
 bool LexicalAnalyzer::SkipComments()
@@ -168,56 +151,47 @@ bool LexicalAnalyzer::SkipComments()
 
     input.GetChar(c);
 
-    if (c == '/')
-    {
-        input.GetChar(c);
-        if (c == '/')
-        {
-            comments = true;
-            while (c != '\n')
-            {
-                comments = true;
-                input.GetChar(c);
-            }
-            line_no++;
-            line = line_no;
-            SkipComments();
-        }
-        else
-        {
-            comments = false;
-            cout << "Syntax Error\n";
-            exit(0);
-        }
-    }
-    else
+    if (c != '/')
     {
         input.UngetChar(c);
         return comments;
     }
+
+    input.GetChar(c);
+    if (c != '/')
+    {
+        comments = false;
+        std::cout << "Syntax Error\n";
+        exit(0);
+    }
+
+    comments = true;
+    while (c != '\n')
+    {
+        comments = true;
+        input.GetChar(c);
+    }
+    line_no++;
+    SkipComments();
     return 0;
 }
 
-bool LexicalAnalyzer::IsKeyword(string s)
+bool LexicalAnalyzer::IsKeyword(std::string s)
 {
     for (int i = 0; i < KEYWORDS_COUNT; i++)
     {
         if (s == keyword[i])
-        {
             return true;
-        }
     }
     return false;
 }
 
-TokenType LexicalAnalyzer::FindKeywordIndex(string s)
+TokenType LexicalAnalyzer::FindKeywordIndex(std::string s)
 {
     for (int i = 0; i < KEYWORDS_COUNT; i++)
     {
         if (s == keyword[i])
-        {
             return (TokenType)(i + 1);
-        }
     }
     return ERROR;
 }
@@ -227,89 +201,74 @@ Token LexicalAnalyzer::ScanNumber()
     char c;
     bool realNUM = false;
     input.GetChar(c);
-    if (isdigit(c))
-    {
-        if (c == '0')
-        {
-            tmp.lexeme = "0";
-            input.GetChar(c);
-            if (c == '.')
-            {
-                input.GetChar(c);
 
-                if (!isdigit(c))
-                {
-                    input.UngetChar(c);
-                }
-                else
-                {
-                    while (!input.EndOfInput() && isdigit(c))
-                    {
-                        tmp.lexeme += c;
-                        input.GetChar(c);
-                        realNUM = true;
-                    }
-                    input.UngetChar(c);
-                }
-            }
-            else
-            {
-                input.UngetChar(c);
-            }
-        }
-        else
-        {
-            tmp.lexeme = "";
-            while (!input.EndOfInput() && isdigit(c))
-            {
-                tmp.lexeme += c;
-                input.GetChar(c);
-            }
-            if (c == '.')
-            {
-                input.GetChar(c);
-
-                if (!isdigit(c))
-                {
-                    input.UngetChar(c);
-                }
-                else
-                {
-                    while (!input.EndOfInput() && isdigit(c))
-                    {
-                        tmp.lexeme += c;
-                        input.GetChar(c);
-                        realNUM = true;
-                    }
-                }
-            }
-            if (!input.EndOfInput())
-            {
-                input.UngetChar(c);
-            }
-        }
-        if (realNUM)
-        {
-            tmp.token_type = REALNUM;
-        }
-        else
-        {
-            tmp.token_type = NUM;
-        }
-        tmp.line_no = line_no;
-        return tmp;
-    }
-    else
+    if (!isdigit(c))
     {
         if (!input.EndOfInput())
-        {
             input.UngetChar(c);
-        }
+
         tmp.lexeme = "";
         tmp.token_type = ERROR;
         tmp.line_no = line_no;
         return tmp;
     }
+
+    if (c == '0')
+    {
+        tmp.lexeme = "0";
+        input.GetChar(c);
+        if (c == '.')
+        {
+            input.GetChar(c);
+
+            if (!isdigit(c))
+                input.UngetChar(c);
+            else
+            {
+                while (!input.EndOfInput() && isdigit(c))
+                {
+                    tmp.lexeme += c;
+                    input.GetChar(c);
+                    realNUM = true;
+                }
+                input.UngetChar(c);
+            }
+        }
+        else
+            input.UngetChar(c);
+    }
+    else
+    {
+        tmp.lexeme = "";
+        while (!input.EndOfInput() && isdigit(c))
+        {
+            tmp.lexeme += c;
+            input.GetChar(c);
+        }
+        if (c == '.')
+        {
+            input.GetChar(c);
+            if (!isdigit(c))
+                input.UngetChar(c);
+
+            while (!input.EndOfInput() && isdigit(c))
+            {
+                tmp.lexeme += c;
+                input.GetChar(c);
+                realNUM = true;
+            }
+        }
+        if (!input.EndOfInput())
+            input.UngetChar(c);
+    }
+
+    if (realNUM)
+        tmp.token_type = REALNUM;
+    else
+        tmp.token_type = NUM;
+
+    tmp.line_no = line_no;
+    return tmp;
 }
 
 Token LexicalAnalyzer::ScanIdOrKeyword()
@@ -325,27 +284,21 @@ Token LexicalAnalyzer::ScanIdOrKeyword()
             tmp.lexeme += c;
             input.GetChar(c);
         }
+
         if (!input.EndOfInput())
-        {
             input.UngetChar(c);
-        }
+
         tmp.line_no = line_no;
 
         if (IsKeyword(tmp.lexeme))
-        {
             tmp.token_type = FindKeywordIndex(tmp.lexeme);
-        }
         else
-        {
             tmp.token_type = ID;
-        }
     }
     else
     {
         if (!input.EndOfInput())
-        {
             input.UngetChar(c);
-        }
         tmp.lexeme = "";
         tmp.token_type = ERROR;
     }
@@ -361,7 +314,60 @@ TokenType LexicalAnalyzer::UngetToken(Token tok)
 Token LexicalAnalyzer::GetToken()
 {
     char c;
-
+    std::map<char, std::function<Token()>> tokenMap;
+    tokenMap = {
+        {'!', [&]()
+         { tmp.token_type = NOT; return tmp; }},
+        {'+', [&]()
+         { tmp.token_type = PLUS; return tmp; }},
+        {'-', [&]()
+         { tmp.token_type = MINUS; return tmp; }},
+        {'*', [&]()
+         { tmp.token_type = MULT; return tmp; }},
+        {'/', [&]()
+         { tmp.token_type = DIV; return tmp; }},
+        {'>', [&]() -> Token
+         {
+             input.GetChar(c);
+             if (c == '=')
+             {
+                 input.UngetChar(c);
+                 tmp.token_type = GREATER;
+                 return tmp;
+             }
+             tmp.token_type = GTEQ;
+             return tmp;
+         }},
+        {'<', [&]() -> Token
+         {
+             input.GetChar(c);
+             if (c == '=')
+                 tmp.token_type = LTEQ;
+             else if (c == '>')
+                 tmp.token_type = NOTEQUAL;
+             else
+             {
+                 input.UngetChar(c);
+                 tmp.token_type = LESS;
+             }
+             return tmp;
+         }},
+        {'(', [&]()
+         { tmp.token_type = LPAREN; return tmp; }},
+        {')', [&]()
+         { tmp.token_type = RPAREN; return tmp; }},
+        {'=', [&]()
+         { tmp.token_type = EQUAL; return tmp; }},
+        {':', [&]()
+         { tmp.token_type = COLON; return tmp; }},
+        {',', [&]()
+         { tmp.token_type = COMMA; return tmp; }},
+        {';', [&]()
+         { tmp.token_type = SEMICOLON; return tmp; }},
+        {'{', [&]()
+         { tmp.token_type = LBRACE; return tmp; }},
+        {'}', [&]()
+         { tmp.token_type = RBRACE; return tmp; }}};
     if (!tokens.empty())
     {
         tmp = tokens.back();
@@ -375,76 +381,9 @@ Token LexicalAnalyzer::GetToken()
     tmp.lexeme = "";
     tmp.line_no = line_no;
     input.GetChar(c);
-    switch (c)
+    auto it = tokenMap.find(c);
+    if (it == tokenMap.end())
     {
-    case '!':
-        tmp.token_type = NOT;
-        return tmp;
-    case '+':
-        tmp.token_type = PLUS;
-        return tmp;
-    case '-':
-        tmp.token_type = MINUS;
-        return tmp;
-    case '*':
-        tmp.token_type = MULT;
-        return tmp;
-    case '/':
-        tmp.token_type = DIV;
-        return tmp;
-    case '>':
-        input.GetChar(c);
-        if (c == '=')
-        {
-            tmp.token_type = GTEQ;
-        }
-        else
-        {
-            input.UngetChar(c);
-            tmp.token_type = GREATER;
-        }
-        return tmp;
-    case '<':
-        input.GetChar(c);
-        if (c == '=')
-        {
-            tmp.token_type = LTEQ;
-        }
-        else if (c == '>')
-        {
-            tmp.token_type = NOTEQUAL;
-        }
-        else
-        {
-            input.UngetChar(c);
-            tmp.token_type = LESS;
-        }
-        return tmp;
-    case '(':
-        tmp.token_type = LPAREN;
-        return tmp;
-    case ')':
-        tmp.token_type = RPAREN;
-        return tmp;
-    case '=':
-        tmp.token_type = EQUAL;
-        return tmp;
-    case ':':
-        tmp.token_type = COLON;
-        return tmp;
-    case ',':
-        tmp.token_type = COMMA;
-        return tmp;
-    case ';':
-        tmp.token_type = SEMICOLON;
-        return tmp;
-    case '{':
-        tmp.token_type = LBRACE;
-        return tmp;
-    case '}':
-        tmp.token_type = RBRACE;
-        return tmp;
-    default:
         if (isdigit(c))
         {
             input.UngetChar(c);
@@ -456,18 +395,15 @@ Token LexicalAnalyzer::GetToken()
             return ScanIdOrKeyword();
         }
         else if (input.EndOfInput())
-        {
             tmp.token_type = END_OF_FILE;
-        }
         else
-        {
             tmp.token_type = ERROR;
-        }
         return tmp;
     }
+    return it->second(); // Execute the corresponding lambda function
 }
 
-int parse_varlist(void)
+int parse_varlist()
 {
     token = lexer.GetToken();
     int tempI;
@@ -480,29 +416,22 @@ int parse_varlist(void)
     {
         token = lexer.GetToken();
         if (token.token_type == COMMA)
-        {
             tempI = parse_varlist();
-        }
         else if (token.token_type == COLON)
-        {
             tempTokenType = lexer.UngetToken(token);
-        }
         else
-        {
-            cout << "\n Syntax Error \n";
-        }
+            std::cout << "\n Syntax Error \n";
+        return (0);
     }
-    else
-    {
-        cout << "\n Syntax Error \n";
-    }
+
+    std::cout << "\n Syntax Error \n";
     return (0);
 }
 
-int parse_body(void);
+int parse_body();
 Token token1;
 
-int parse_unaryOperator(void)
+int parse_unaryOperator()
 {
     token = lexer.GetToken();
 
@@ -517,99 +446,58 @@ int parse_unaryOperator(void)
         case MINUS:
             return (3);
         default:
-            cout << "\nSyntax Error\n";
+            std::cout << "\nSyntax Error\n";
             return (0);
         }
-    }
-    else
-    {
-        cout << "\nSyntax Error\n";
         return (0);
     }
+    std::cout << "\nSyntax Error\n";
+    return (0);
 }
 
-int parse_binaryOperator(void)
+int parse_binaryOperator()
 {
+    std::map<TokenType, int> binaryOperatorMap = {
+        {PLUS, 15},
+        {MINUS, 16},
+        {MULT, 17},
+        {DIV, 18},
+        {GREATER, 20},
+        {LESS, 23},
+        {GTEQ, 19},
+        {LTEQ, 21},
+        {EQUAL, 26},
+        {NOTEQUAL, 22}};
     token = lexer.GetToken();
-    if (token.token_type == PLUS)
-    {
-        return (15);
-    }
-    else if (token.token_type == MINUS)
-    {
-        return (16);
-    }
-    else if (token.token_type == MULT)
-    {
-        return (17);
-    }
-    else if (token.token_type == DIV)
-    {
-        return (18);
-    }
-    else if (token.token_type == GREATER)
-    {
-        return (20);
-    }
-    else if (token.token_type == LESS)
-    {
-        return (23);
-    }
-    else if (token.token_type == GTEQ)
-    {
-        return (19);
-    }
-    else if (token.token_type == LTEQ)
-    {
-        return (21);
-    }
-    else if (token.token_type == EQUAL)
-    {
-        return (26);
-    }
-    else if (token.token_type == NOTEQUAL)
-    {
-        return (22);
-    }
-    else
-    {
-        cout << "\n Syntax Error \n";
-        return (-1);
-    }
-}
-
-int parse_primary(void)
-{
-    token = lexer.GetToken();
-
-    // Create an empty unordered_map and populate it explicitly
-    std::unordered_map<TokenType, int> tokenTypeMap;
-    tokenTypeMap[NUM] = 1;
-    tokenTypeMap[REALNUM] = 2;
-    tokenTypeMap[TR] = 3;
-    tokenTypeMap[FA] = 3;
-
-    // Check if token type is ID and handle it separately
-    if (token.token_type == ID)
-    {
-        return searchList(token.lexeme);
-    }
-
-    // Use the map to find the return value based on other token types
-    std::unordered_map<TokenType, int>::iterator it = tokenTypeMap.find(token.token_type);
-    if (it != tokenTypeMap.end())
-    {
+    auto it = binaryOperatorMap.find(token.token_type);
+    if (it != binaryOperatorMap.end())
         return it->second;
-    }
-    else
-    {
-        std::cout << "\n Syntax Error \n";
-        return 0;
-    }
+
+    std::cout << "\n Syntax Error \n";
+    return (-1);
 }
 
-// un refactored
-int parse_expression(void)
+int parse_primary()
+{
+    std::map<TokenType, int> primaryTypeMap = {
+        {NUM, 1},
+        {REALNUM, 2},
+        {TR, 3},
+        {FA, 3}};
+    token = lexer.GetToken();
+    if (token.token_type == ID)
+        return searchList(token.lexeme);
+
+    auto it = primaryTypeMap.find(token.token_type);
+    if (it != primaryTypeMap.end())
+        return it->second;
+
+    std::cout << "\n Syntax Error \n";
+    return 0;
+}
+
+// todo: need refactoring
+int parse_expression()
 {
     int tempI;
     token = lexer.GetToken();
@@ -624,12 +512,20 @@ int parse_expression(void)
         tempI = parse_binaryOperator();
         int tempI1 = parse_expression();
         int tempI2 = parse_expression();
-
-        if ((tempI1 != tempI2) || (tempI != 15 && tempI != 16 && tempI != 17 && tempI != 18 && tempI != 19 && tempI != 20 && tempI != 21 && tempI != 22 && tempI != 23 && tempI != 26))
+        auto isTypeMismatch = [tempI, tempI1, tempI2]()
         {
-
-            if (tempI == 15 || tempI == 16 || tempI == 17 || tempI == 18)
+            return (tempI1 != tempI2) || (tempI != 15 && tempI != 16 && tempI != 17 && tempI != 18 &&
+                                          tempI != 19 && tempI != 20 && tempI != 21 && tempI != 22 &&
+                                          tempI != 23 && tempI != 26);
+        };
+        if (isTypeMismatch())
+        {
+            switch (tempI)
             {
+            case 15:
+            case 16:
+            case 17:
+            case 18:
                 if (tempI1 <= 2 && tempI2 > 3)
                 {
                     typeUpdating(tempI2, tempI1);
@@ -647,12 +543,16 @@ int parse_expression(void)
                 }
                 else
                 {
-                    cout << "TYPE MISMATCH " << token.line_no << " C2" << endl;
+                    std::cout << "TYPE MISMATCH " << token.line_no << " C2" << std::endl;
                     exit(1);
                 }
-            }
-            else if (tempI == 19 || tempI == 20 || tempI == 21 || tempI == 22 || tempI == 23 || tempI == 26)
-            {
+                break;
+            case 19:
+            case 20:
+            case 21:
+            case 22:
+            case 23:
+            case 26:
                 if (tempI2 > 3 && tempI1 > 3)
                 {
                     typeUpdating(tempI2, tempI1);
@@ -661,26 +561,29 @@ int parse_expression(void)
                 }
                 else
                 {
-                    cout << "TYPE MISMATCH " << token.line_no << " C2" << endl;
+                    std::cout << "TYPE MISMATCH " << token.line_no << " C2" << std::endl;
                     exit(1);
                 }
-            }
-            else
-            {
-                cout << "TYPE MISMATCH " << token.line_no << " C2" << endl;
+                break;
+
+            default:
+                std::cout << "TYPE MISMATCH " << token.line_no << " C2" << std::endl;
                 exit(1);
             }
         }
-        if (tempI == 19 || tempI == 20 || tempI == 21 || tempI == 23 || tempI == 26)
+        switch (tempI)
         {
+        case 19:
+        case 20:
+        case 21:
+        case 23:
+        case 26:
             tempI = 3;
-        }
-        else
-        {
+            break;
+        default:
             tempI = tempI2;
         }
     }
-
     else if (token.token_type == NOT)
     {
         tempTokenType = lexer.UngetToken(token);
@@ -688,13 +591,13 @@ int parse_expression(void)
         tempI = parse_expression();
         if (tempI != 3)
         {
-            cout << "TYPE MISMATCH " << token.line_no << " C3" << endl;
+            std::cout << "TYPE MISMATCH " << token.line_no << " C3" << std::endl;
             exit(1);
         }
     }
     else
     {
-        cout << "\n Syntax Error \n";
+        std::cout << "\n Syntax Error \n";
         return (0);
     }
     return tempI;
@@ -702,101 +605,109 @@ int parse_expression(void)
 
 void comparingLeft(int line_No, int token_Type)
 {
-    for (Node *temp = symbolTable; temp != NULL; temp = temp->next)
+    Node *temp = symbolTable;
+    while (temp != NULL)
     {
         if (temp->item->lineNO == line_No)
-        {
             temp->item->type = token_Type;
-        }
+        temp = temp->next;
     }
 }
 
 void typeUpdating(int currentType, int newType)
 {
-    // Simplify the traversal using a for loop
-    for (Node *temp = symbolTable; temp != NULL; temp = temp->next)
+    Node *temp = symbolTable;
+    while (temp != NULL)
     {
         if (temp->item->type == currentType)
-        {
             temp->item->type = newType;
-        }
+        temp = temp->next;
     }
 }
 
-int parse_assstmt(void)
+int parse_assstmt()
 {
 
-    int leftHS;
-    int rightHS;
+    int leftHS, rightHS;
     token = lexer.GetToken();
     int tempI;
-    string name;
+    std::string name;
 
-    if (token.token_type == ID)
+    if (token.token_type != ID)
     {
+        std::cout << "\n Syntax Error \n";
+        return 0;
+    }
 
-        leftHS = searchList(token.lexeme);
+    leftHS = searchList(token.lexeme);
+    token = lexer.GetToken();
+    switch (token.token_type)
+    {
+    case EQUAL:
         token = lexer.GetToken();
-        if (token.token_type == EQUAL)
+        switch (token.token_type)
         {
-            token = lexer.GetToken();
-            if (token.token_type == ID || token.token_type == NUM || token.token_type == REALNUM || token.token_type == TR || token.token_type == FA || token.token_type == PLUS || token.token_type == MINUS || token.token_type == MULT || token.token_type == DIV || token.token_type == LESS || token.token_type == GREATER || token.token_type == GTEQ || token.token_type == LTEQ || token.token_type == EQUAL || token.token_type == NOTEQUAL || token.token_type == NOT)
+        case ID:
+        case NUM:
+        case REALNUM:
+        case TR:
+        case FA:
+        case PLUS:
+        case MINUS:
+        case MULT:
+        case DIV:
+        case LESS:
+        case GREATER:
+        case GTEQ:
+        case LTEQ:
+        case EQUAL:
+        case NOTEQUAL:
+        case NOT:
+            lexer.UngetToken(token);
+            rightHS = parse_expression();
+            if (leftHS == 1 || leftHS == 2 || leftHS == 3)
             {
-                lexer.UngetToken(token);
-                rightHS = parse_expression();
-                if (leftHS == 1 || leftHS == 2 || leftHS == 3)
+                if (leftHS != rightHS)
                 {
-                    if (leftHS == rightHS)
+                    if (leftHS < 3)
                     {
+                        std::cout << "TYPE MISMATCH " << token.line_no << " C1" << std::endl;
+                        exit(1);
                     }
                     else
                     {
-                        if (leftHS < 3)
-                        {
-                            cout << "TYPE MISMATCH " << token.line_no << " C1" << endl;
-                            exit(1);
-                        }
-                        else
-                        {
-                            typeUpdating(rightHS, leftHS);
-                            rightHS = leftHS;
-                        }
+                        typeUpdating(rightHS, leftHS);
+                        rightHS = leftHS;
                     }
                 }
-                else
-                {
-                    typeUpdating(leftHS, rightHS);
-                    leftHS = rightHS;
-                }
-
-                token = lexer.GetToken();
-                if (token.token_type == SEMICOLON)
-                {
-                }
-                else
-                {
-                    cout << "\n HI Syntax Error " << token.token_type << " \n";
-                }
             }
-
             else
             {
-                cout << "\n Syntax Error \n";
+                typeUpdating(leftHS, rightHS);
+                leftHS = rightHS;
             }
+
+            token = lexer.GetToken();
+            if (token.token_type != SEMICOLON)
+            {
+                std::cout << "\n HI Syntax Error " << token.token_type << " \n";
+            }
+            break;
+
+        default:
+            std::cout << "\n Syntax Error \n";
+            break;
         }
-        else
-        {
-            cout << "\n Syntax Error \n";
-        }
+        break;
+    default:
+        std::cout << "\n Syntax Error \n";
+        break;
     }
-    else
-    {
-        cout << "\n Syntax Error \n";
-    }
+
     return (0);
 }
 
-int parse_case(void)
+int parse_case()
 {
     std::vector<TokenType> expectedTokens;
     expectedTokens.push_back(CASE);
@@ -816,78 +727,85 @@ int parse_case(void)
         tokenType = token.token_type;
         if (tokenType != expectedTokens[i])
         {
-            cout << errorMessages[i];
-            return 0; // Exit on the first error
+            std::cout << errorMessages[i];
+            return 0;
         }
         if (tokenType == COLON)
         {
-            tempI = parse_body(); // Only parse the body if the sequence is correct up to COLON
+            tempI = parse_body();
             break;
         }
     }
-
-    return tempI; // Return the result of parse_body() or 0 if an error occurred
+    return tempI;
 }
 
-int parse_caselist(void)
+std::map<TokenType, std::function<void()>> caselistActionMap;
+int parse_caselist()
 {
-    while (true)
+    caselistActionMap = {
+        {CASE, [&]()
+         { lexer.UngetToken(token); parse_case(); }},
+        {RBRACE, [&]()
+         { lexer.UngetToken(token); throw std::runtime_error("break"); }}};
+    try
     {
-        token = lexer.GetToken();
-        if (token.token_type == CASE)
+        while (true)
         {
-            lexer.UngetToken(token);
-            parse_case(); // Assume tempI is not actually needed here since it's not used after assignment
+            token = lexer.GetToken();
+            auto action = caselistActionMap.find(token.token_type);
+            if (action != caselistActionMap.end())
+                action->second();
+            else
+            {
+                std::cout << "\n Syntax Error: Unexpected token in caselist \n";
+                break;
+            }
         }
-        else if (token.token_type == RBRACE)
-        {
-            lexer.UngetToken(token);
-            break;
-        }
+    }
+    catch (const std::runtime_error &e)
+    {
+        if (std::string(e.what()) == "break")
+            return 0;
         else
-        {
-            // Handle unexpected token
-            cout << "\n Syntax Error: Unexpected token in caselist \n";
-            break;
-        }
+            throw;
     }
     return 0;
 }
 
-int parse_switchstmt(void)
+int parse_switchstmt()
 {
     token = lexer.GetToken();
     if (token.token_type != SWITCH)
     {
-        cout << "\n Syntax Error \n";
+        std::cout << "\n Syntax Error \n";
         return 0;
     }
 
     token = lexer.GetToken();
     if (token.token_type != LPAREN)
     {
-        cout << "\n Syntax Error \n";
+        std::cout << "\n Syntax Error \n";
         return 0;
     }
 
     int tempI = parse_expression();
     if (tempI <= 3 && tempI != 1)
     {
-        cout << "TYPE MISMATCH " << token.line_no << " C5" << endl;
+        std::cout << "TYPE MISMATCH " << token.line_no << " C5" << std::endl;
         exit(1);
     }
 
     token = lexer.GetToken();
     if (token.token_type != RPAREN)
     {
-        cout << "\n Syntax Error \n";
+        std::cout << "\n Syntax Error \n";
         return 0;
     }
 
     token = lexer.GetToken();
     if (token.token_type != LBRACE)
     {
-        cout << "\n Syntax Error \n";
+        std::cout << "\n Syntax Error \n";
         return 0;
     }
 
@@ -895,153 +813,133 @@ int parse_switchstmt(void)
 
     token = lexer.GetToken();
     if (token.token_type != RBRACE)
-    {
-        cout << "\n Syntax Error \n";
-    }
+        std::cout << "\n Syntax Error \n";
 
     return 0;
 }
 
-int parse_whilestmt(void)
+int parse_whilestmt()
 {
     token = lexer.GetToken();
     if (token.token_type != WHILE)
     {
-        cout << "\n Syntax Error \n";
+        std::cout << "\n Syntax Error \n";
         return 0;
     }
 
     token = lexer.GetToken();
     if (token.token_type != LPAREN)
     {
-        cout << "\n Syntax Error \n";
+        std::cout << "\n Syntax Error \n";
         return 0;
     }
 
     int tempI = parse_expression();
     if (tempI != 3)
     {
-        cout << "TYPE MISMATCH " << token.line_no << " C4" << endl;
+        std::cout << "TYPE MISMATCH " << token.line_no << " C4" << std::endl;
         exit(1);
     }
 
     token = lexer.GetToken();
     if (token.token_type != RPAREN)
     {
-        cout << "\n Syntax Error \n";
+        std::cout << "\n Syntax Error \n";
         return 0;
     }
 
     return parse_body();
 }
 
-int parse_ifstmt(void)
+int parse_ifstmt()
 {
     token = lexer.GetToken();
     if (token.token_type != IF)
     {
-        cout << "\n Syntax Error \n";
+        std::cout << "\n Syntax Error \n";
         return 0;
     }
 
     token = lexer.GetToken();
     if (token.token_type != LPAREN)
     {
-        cout << "\n Syntax Error \n";
+        std::cout << "\n Syntax Error \n";
         return 0;
     }
 
     int tempI = parse_expression();
     if (tempI != 3)
     {
-        cout << "TYPE MISMATCH " << token.line_no << " C4" << endl;
+        std::cout << "TYPE MISMATCH " << token.line_no << " C4" << std::endl;
         exit(1);
     }
 
     token = lexer.GetToken();
     if (token.token_type != RPAREN)
     {
-        cout << "\n Syntax Error \n";
+        std::cout << "\n Syntax Error \n";
         return 0;
     }
 
     return parse_body();
 }
 
-int parse_stmt(void)
+int parse_stmt()
 {
+    std::map<TokenType, int (*)()> stmtFunctionMap = {
+        {ID, parse_assstmt},
+        {IF, parse_ifstmt},
+        {WHILE, parse_whilestmt},
+        {SWITCH, parse_switchstmt}};
     token = lexer.GetToken();
-
-    // Use a switch statement to simplify the token type handling.
-    switch (token.token_type)
+    auto it = stmtFunctionMap.find(token.token_type);
+    if (it != stmtFunctionMap.end())
     {
-    case ID:
         lexer.UngetToken(token);
-        return parse_assstmt(); // Directly return from the function calls
-
-    case IF:
-        lexer.UngetToken(token);
-        return parse_ifstmt();
-
-    case WHILE:
-        lexer.UngetToken(token);
-        return parse_whilestmt();
-
-    case SWITCH:
-        lexer.UngetToken(token);
-        return parse_switchstmt();
-
-    default:
-        cout << "\n Syntax Error \n";
-        return 0; // Properly return 0 on syntax errors
+        return it->second();
     }
+    std::cout << "\n Syntax Error \n";
+    return 0;
 }
 
-int parse_stmtlist(void)
+int parse_stmtlist()
 {
+    std::set<TokenType> validStatementInitiators = {
+        ID, IF, WHILE, SWITCH};
     while (true)
     {
         token = lexer.GetToken();
-        // Check if the token type is one of the acceptable statement starts
-        if (token.token_type == ID || token.token_type == IF ||
-            token.token_type == WHILE || token.token_type == SWITCH)
+        if (validStatementInitiators.find(token.token_type) == validStatementInitiators.end())
+        {
+            std::cout << "\n Syntax Error: Invalid token to initiate statement \n";
+            break;
+        }
+        lexer.UngetToken(token);
+        parse_stmt();
+        token = lexer.GetToken();
+        if (token.token_type == RBRACE)
         {
             lexer.UngetToken(token);
-            parse_stmt(); // Assume we always process one statement successfully
-
-            // Check for another statement or the end of the statement list
-            token = lexer.GetToken();
-            if (token.token_type == RBRACE)
-            {
-                lexer.UngetToken(token);
-                break; // Break the loop if we reach the end of the statement block
-            }
-            else if (token.token_type != ID && token.token_type != IF &&
-                     token.token_type != WHILE && token.token_type != SWITCH)
-            {
-                cout << "\n Syntax Error \n";
-                break; // Syntax error if the next token is not valid
-            }
-            lexer.UngetToken(token); // Put the token back for the next loop iteration
+            break;
         }
-        else
+        else if (validStatementInitiators.find(token.token_type) == validStatementInitiators.end())
         {
-            cout << "\n Syntax Error \n";
-            break; // Break the loop on syntax error
+            std::cout << "\n Syntax Error: Unexpected token after statement \n";
+            break;
         }
+        lexer.UngetToken(token);
     }
     return 0;
 }
 
-int parse_body(void)
+int parse_body()
 {
     token = lexer.GetToken();
-    bool isValid = false; // Track the validity of the token processing
-
+    bool isValid = false;
     if (token.token_type == LBRACE)
     {
         if (parse_stmtlist() == 0)
-        { // Assume parse_stmtlist returns 0 on success
+        {
             token = lexer.GetToken();
             isValid = (token.token_type == RBRACE);
         }
@@ -1052,145 +950,138 @@ int parse_body(void)
         isValid = true;
     }
     else
-    {
         isValid = false;
-    }
 
     if (!isValid)
-    {
-        cout << "\n Syntax Error \n ";
-    }
+        std::cout << "\n Syntax Error \n ";
+
     return 0;
 }
 
-int parse_typename(void)
+int parse_typename()
 {
-    // Create an empty set and populate it manually
     std::set<TokenType> validTypes;
     validTypes.insert(INT);
     validTypes.insert(REAL);
     validTypes.insert(BOO);
 
     token = lexer.GetToken();
-    // Check if the token type is within the set of valid types
     if (validTypes.find(token.token_type) != validTypes.end())
     {
         comparingLeft(token.line_no, token.token_type);
+        return 0;
     }
-    else
-    {
-        cout << "\n Syntax Error in parse_typename \n";
-    }
+
+    std::cout << "\n Syntax Error in parse_typename \n";
     return 0;
 }
 
-int parse_vardecl(void)
+int parse_vardecl()
 {
-    // Get the first token and check if it's an ID.
     token = lexer.GetToken();
     if (token.token_type != ID)
     {
-        cout << "\n Syntax Error \n";
+        std::cout << "\n Syntax Error \n";
         return 0;
     }
 
-    // Handle the ID by first ungetting it and parsing the variable list.
     lexer.UngetToken(token);
     int tempI = parse_varlist();
 
-    // Next token must be a colon to continue.
     token = lexer.GetToken();
     if (token.token_type != COLON)
     {
-        cout << "\n Syntax Error \n";
+        std::cout << "\n Syntax Error \n";
         return 0;
     }
 
-    // Parse the type name after the colon.
     tempI = parse_typename();
 
-    // Finally, expect a semicolon to end the declaration.
     token = lexer.GetToken();
     if (token.token_type != SEMICOLON)
     {
-        cout << "\n Syntax Error \n";
+        std::cout << "\n Syntax Error \n";
         return 0;
     }
 
-    return 0; // Successful parsing of the variable declaration.
+    return 0;
 }
 
-// need refactoring
-int parse_vardecllist(void)
+int parse_vardecllist()
 {
     int tempI;
     token = lexer.GetToken();
-    while (token.token_type == ID)
+    for (; token.token_type == ID; token = lexer.GetToken())
     {
         tempTokenType = lexer.UngetToken(token);
         tempI = parse_vardecl();
-        token = lexer.GetToken();
-        // Removed the empty if-else block as it serves no purpose.
     }
     tempTokenType = lexer.UngetToken(token);
     return (0);
 }
 
-// need refactoring
-string global = "::";
-int parse_globalVars(void)
+std::string global = "::";
+int parse_globalVars()
 {
     token = lexer.GetToken();
-    vector<int> tempIList; // Using a vector to store integers
-
-    if (token.token_type == ID)
+    std::vector<int> tempIList;
+    if (token.token_type != ID)
     {
-        tempTokenType = lexer.UngetToken(token);
-
-        // We assume parse_vardecllist() returns an int that we push back into the vector
-        tempIList.push_back(parse_vardecllist());
+        std::cout << "Syntax Error";
+        return 0;
     }
-    else
-    {
-        cout << "Syntax Error";
-    }
+    tempTokenType = lexer.UngetToken(token);
+    tempIList.push_back(parse_vardecllist());
     return 0;
 }
 
-int parse_program(void)
+std::map<TokenType, std::function<int()>> programParsingMap;
+void setupProgramParsingMap()
 {
-    token = lexer.GetToken();
-    int tempI;
-    while (token.token_type != END_OF_FILE)
+    programParsingMap = {
+        {ID, [&]() -> int
+         {
+             lexer.UngetToken(token);
+             parse_globalVars();
+             return parse_body();
+         }},
+        {LBRACE, [&]() -> int
+         {
+             lexer.UngetToken(token);
+             return parse_body();
+         }},
+        {END_OF_FILE, []() -> int
+         {
+             return 0; // Normally this might not be called because the loop checks for EOF
+         }}};
+}
+int parse_program()
+{
+    setupProgramParsingMap(); // Ensure the map is initialized
+
+    while (true)
     {
-        if (token.token_type == ID)
-        {
-            tempTokenType = lexer.UngetToken(token);
-            tempI = parse_globalVars();
-            tempI = parse_body();
-        }
-        else if (token.token_type == LBRACE)
-        {
-            tempTokenType = lexer.UngetToken(token);
-            tempI = parse_body();
-        }
-        else if (token.token_type == END_OF_FILE)
-        {
-            return (0);
-        }
-        else
-        {
-            cout << "\n Syntax Error\n";
-            return (0);
-        }
         token = lexer.GetToken();
+
+        if (token.token_type == END_OF_FILE)
+            break; // Exit the loop correctly on EOF
+
+        auto action = programParsingMap.find(token.token_type);
+        if (action == programParsingMap.end())
+        {
+
+            std::cout << "\n Syntax Error\n";
+            return 0;
+        }
+        int tempI = action->second(); // Execute the function mapped to the token type
     }
     return 0;
 }
 
-string output = "";
+std::string output = "";
 
-void printList(void)
+// todo: need refactoring
+void printList()
 {
     Node *temp = symbolTable;
     int temp1;
@@ -1211,55 +1102,47 @@ void printList(void)
                     output += ", " + temp->item->name;
                     temp->item->isPrinted = 1;
                 }
-                else
-                {
-                }
             }
             output += ": ? #";
-            cout << output << endl;
+            std::cout << output << std::endl;
             temp->item->isPrinted = 1;
             output = "";
             temp = symbolTable;
         }
         else if (temp->item->type < 4 && temp->item->isPrinted == 0)
         {
-            string lCase = keyword[(temp->item->type) - 1];
+            std::string lCase = keyword[(temp->item->type) - 1];
             int temp1 = temp->item->type;
             output = temp->item->name + ": " + lCase + " #";
-            cout << output << endl;
+            std::cout << output << std::endl;
             output = "";
             temp->item->isPrinted = 1;
 
             while (temp->next != NULL && temp->next->item->type == temp1)
             {
                 temp = temp->next;
-                string lCase2 = keyword[(temp->item->type) - 1];
+                std::string lCase2 = keyword[(temp->item->type) - 1];
                 output = temp->item->name + ": " + lCase2 + " #";
-                cout << output << endl;
+                std::cout << output << std::endl;
                 temp->item->isPrinted = 1;
                 output = "";
             }
         }
         else
-        {
             temp = temp->next;
-        }
     }
     if (temp->item->type <= 3 && temp->item->isPrinted == 0)
     {
-        string lCase3 = keyword[(temp->item->type) - 1];
+        std::string lCase3 = keyword[(temp->item->type) - 1];
         output += temp->item->name + ": " + lCase3 + " #";
-        cout << output << endl;
+        std::cout << output << std::endl;
         output = "";
     }
     else if (temp->item->type > 3 && temp->item->isPrinted == 0)
     {
         output += temp->item->name + ":" + " ? " + "#";
-        cout << output << endl;
+        std::cout << output << std::endl;
         output = "";
-    }
-    else
-    {
     }
 }
 

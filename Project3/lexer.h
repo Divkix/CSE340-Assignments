@@ -1,3 +1,12 @@
+//
+// Name: Divanshu Chauhan
+//
+// Date: 07/03/2024
+//
+//
+// Description: This is project 3 for cse340 summer 24.
+//              This file contains the class definition for the Lexer class.
+//
 /*
  * Copyright (C) Rida Bazzi, 2016
  *
@@ -74,7 +83,6 @@ public:
 private:
     std::vector<Token> tokens;
     int line_no;
-    int line;
     Token tmp;
     InputBuffer input;
 
